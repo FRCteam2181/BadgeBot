@@ -37,9 +37,7 @@ def save_badge_data(user_id, username, badge_type, badge_level ):
         data[user_key]["badges"].append(new_badge)
         with open(DATA_FILE, "w") as f:
             json.dump(data, f, indent=4)
-
         return "new"
-
     return "repeat"
 
 
@@ -86,5 +84,47 @@ async def badge_completed(ctx, badgetype: str, badgelevel:str):
         await ctx.send(f'{badgetype}  level {badgelevel}')
     elif repeatBadge == "repeat":
         await ctx.send("Badge already earned.")
+
+@bot.command()
+async def badges(ctx):
+
+    user = ctx.author
+    user_key = str(user.id)
+
+    #TODO: make it errors if the json doesnt exist, user not in list, no badges
+    with open('badge_data.json', 'r') as f:
+        data = json.load(f)
+
+    if user_key in data:
+        badges_completed = ""
+        for badge in data[user_key]["badges"]:
+            badges_completed += f"{badge["badge_type"]} {badge["level"]} \n"
+        with open(DATA_FILE, "w") as f:
+            json.dump(data, f, indent=4)
+        await ctx.send(badges_completed)
+
+@bot.command()
+async def remove_badge(ctx, badgetype: str, badgelevel: str):
+
+    user = ctx.author
+    user_key = str(user.id)
+
+    #TODO: make it errors if the json doesnt exist, user not in list, no badges
+    with open('badge_data.json', 'r') as f:
+        data = json.load(f)
+
+    badge_to_remove = {
+        "badge_type": badgetype,
+        "level": badgelevel
+    }
+
+    if badge_to_remove in data[user_key]["badges"]:
+        data[user_key]["badges"].remove(badge_to_remove)
+        with open(DATA_FILE, "w") as f:
+            json.dump(data, f, indent=4)
+        await ctx.send("Badge Removed")
+
+
+
 
 bot.run(DISCORD_TOKEN)
