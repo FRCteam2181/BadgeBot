@@ -29,13 +29,20 @@ def save_badge_data(user_id, username, badge_type, badge_level ):
         }
 
     new_badge = {
-        "type": badge_type,
+        "badge_type": badge_type,
         "level": badge_level
     }
-    data[user_key]["badges"].append(new_badge)
 
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    if new_badge not in data[user_key]["badges"]:
+        data[user_key]["badges"].append(new_badge)
+        with open(DATA_FILE, "w") as f:
+            json.dump(data, f, indent=4)
+
+        return "new"
+
+    return "repeat"
+
+
 
 load_dotenv()
 
@@ -61,29 +68,23 @@ async def hello(ctx):
     await ctx.send("Hello!")
 
 @bot.command()
-async def badge_completed(ctx, type: str, badgelevel:str):
+async def badge_completed(ctx, badgetype: str, badgelevel:str):
 
     user = ctx.author
 
-    sent_badge = False
-    sent_level = False
+    if badgetype not in badge:
+        await ctx.send("Invalid command")
+        return
 
-    for badgetype in badge:
-        if type == badgetype:
-            sent_badge = True
-            pass
+    if badgelevel not in level:
+        await ctx.send("Invalid command")
+        return
 
-    for leveltype in level:
-        if badgelevel == leveltype:
-            sent_level = True
-            pass
+    repeatBadge = save_badge_data(user.id, str(user), badgetype, badgelevel)
 
-    if sent_badge and sent_level:
-
-        save_badge_data(user.id, str(user), type, badgelevel)
-    
-        await ctx.send(f'{type}  level {badgelevel}')
-    else:
-        await ctx.send("invalid command")
+    if repeatBadge == "new":
+        await ctx.send(f'{badgetype}  level {badgelevel}')
+    elif repeatBadge == "repeat":
+        await ctx.send("Badge already earned.")
 
 bot.run(DISCORD_TOKEN)
