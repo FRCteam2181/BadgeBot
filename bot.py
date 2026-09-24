@@ -50,6 +50,7 @@ PUBLIC_KEY = os.getenv("PUBLIC_KEY")
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True
 
 bot = commands.Bot(
     command_prefix="!",
@@ -66,9 +67,50 @@ async def hello(ctx):
     await ctx.send("Hello!")
 
 @bot.command()
-async def badge_completed(ctx, badgetype: str, badgelevel:str):
+async def info(ctx):
+    await ctx.send(
+        "**Badges available:** Basic, Hours, Events, Leadership, CAD, Build, Electrical, Programming, Business, Safety/FMEA, Scouting/Strategy \n" \
+        "**Levels available:** 1,2,3,4 \n" \
+        "\n" \
+        "For each command the [@user] is optional, if not done will apply the command to yourself.\n" 
+        "The [badge] and [level] are not. \n" \
+        "\n" \
+        "!info ----------------------------------------- Gives list of commands and badges \n" \
+        "!badges [@user] ------------------------------- See list of badges \n" \
+        "!badge_completed [badge] [level] [@user] ------ Add a badge to a user \n" \
+        "!remove_badge [badge] [level] [@user] --------- Reove a badge from a user \n"
+    )
 
-    user = ctx.author
+@bot.command()
+async def badges(ctx, member: discord.Member = None):
+
+    if member == None:
+        member = ctx.author
+    member_key = str(member.id)
+
+    #TODO: make it errors if the json doesnt exist
+    if os.path.isfile("badge_data.json"):
+        with open('badge_data.json', 'r') as f:
+            data = json.load(f)
+
+        if member_key in data:
+            if data[member_key]["badges"]:
+                badges_completed = ""
+                for badge in data[member_key]["badges"]:
+                    badges_completed += f"{badge["badge_type"]} {badge["level"]} \n"
+                await ctx.send(badges_completed)
+            else:
+                await ctx.send(f'{member.name} does not have any badges, please log a badge.')
+        else:
+            await ctx.send(f'{member.name} does not have nay badges, please log a badge first.')
+    else:
+        await ctx.send('No json file exist for badges, please add a badge first.')
+
+@bot.command()
+async def badge_completed(ctx, badgetype: str, badgelevel:str, member: discord.Member = None):
+
+    if member is None:
+        member = ctx.author
 
     if badgetype not in badge:
         await ctx.send("Invalid command")
@@ -78,53 +120,39 @@ async def badge_completed(ctx, badgetype: str, badgelevel:str):
         await ctx.send("Invalid command")
         return
 
-    repeatBadge = save_badge_data(user.id, str(user), badgetype, badgelevel)
+    repeatBadge = save_badge_data(member.id, str(member), badgetype, badgelevel)
 
     if repeatBadge == "new":
-        await ctx.send(f'{badgetype}  level {badgelevel}')
+        await ctx.send(f'{member.name} has earned {badgetype}  level {badgelevel}.')
     elif repeatBadge == "repeat":
-        await ctx.send("Badge already earned.")
+        await ctx.send(f"{member.name} has already earned {badgetype} level {badgelevel}.")
 
 @bot.command()
-async def badges(ctx):
+async def remove_badge(ctx, badgetype: str, badgelevel: str, member: discord.Member = None):
 
-    user = ctx.author
-    user_key = str(user.id)
+    if member == None:
+        member = ctx.author
+    member_key = str(member.id)
 
-    #TODO: make it errors if the json doesnt exist, user not in list, no badges
-    with open('badge_data.json', 'r') as f:
-        data = json.load(f)
+    if os.path.isfile('badge_data.json'):
+        with open('badge_data.json', 'r') as f:
+            data = json.load(f)
 
-    if user_key in data:
-        badges_completed = ""
-        for badge in data[user_key]["badges"]:
-            badges_completed += f"{badge["badge_type"]} {badge["level"]} \n"
-        with open(DATA_FILE, "w") as f:
-            json.dump(data, f, indent=4)
-        await ctx.send(badges_completed)
-
-@bot.command()
-async def remove_badge(ctx, badgetype: str, badgelevel: str):
-
-    user = ctx.author
-    user_key = str(user.id)
-
-    #TODO: make it errors if the json doesnt exist, user not in list, no badges
-    with open('badge_data.json', 'r') as f:
-        data = json.load(f)
-
-    badge_to_remove = {
-        "badge_type": badgetype,
-        "level": badgelevel
-    }
-
-    if badge_to_remove in data[user_key]["badges"]:
-        data[user_key]["badges"].remove(badge_to_remove)
-        with open(DATA_FILE, "w") as f:
-            json.dump(data, f, indent=4)
-        await ctx.send("Badge Removed")
-
-
-
+        badge_to_remove = {
+            "badge_type": badgetype,
+            "level": badgelevel
+        }
+        if member_key in data:
+            if badge_to_remove in data[member_key]["badges"]:
+                data[member_key]["badges"].remove(badge_to_remove)
+                with open(DATA_FILE, "w") as f:
+                    json.dump(data, f, indent=4)
+                await ctx.send("Badge Removed")
+            else:
+                await ctx.send(f"{member} does not have {badgetype} level {badgelevel}.")
+        else:
+            await ctx.send('User not in list, please add a badge to the user first')
+    else:
+        await ctx.send('No json file exist for badges, please add a badge first.')
 
 bot.run(DISCORD_TOKEN)
